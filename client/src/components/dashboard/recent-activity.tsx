@@ -52,13 +52,13 @@ function getActivityText(log: ModerationLog): string {
 }
 
 export default function RecentActivity() {
-  const { data: servers } = useQuery({
+  const { data: servers = [] } = useQuery<any[]>({
     queryKey: ["/api/servers"],
   });
   
-  const serverId = servers?.[0]?.id;
+  const serverId = servers.length > 0 ? servers[0].id : null;
   
-  const { data: logs, isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery<ModerationLog[]>({
     queryKey: ["/api/servers", serverId, "moderation-logs"],
     enabled: !!serverId,
   });
@@ -111,7 +111,7 @@ export default function RecentActivity() {
                   <p className="text-xs text-discord-light mt-1">Reason: {log.reason}</p>
                 )}
                 <p className="text-xs text-discord-light mt-1">
-                  {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                  {formatDistanceToNow(log.timestamp instanceof Date ? log.timestamp : new Date(), { addSuffix: true })}
                 </p>
               </div>
             </div>

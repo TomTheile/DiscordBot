@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { BotStatusResponse, CommandCategory } from "@/lib/discord-types";
 
 export default function CommandCategories() {
-  const { data: botStatus, isLoading } = useQuery({
+  const { data: botStatus, isLoading } = useQuery<BotStatusResponse>({
     queryKey: ["/api/bot/status"],
   });
 
@@ -33,7 +34,7 @@ export default function CommandCategories() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((category, idx) => (
           <Link key={idx} href={`/${category.category.toLowerCase()}`}>
-            <a className="bg-discord-dark rounded-lg p-5 border border-gray-700 hover:border-discord-primary transition-colors duration-200">
+            <div className="bg-discord-dark rounded-lg p-5 border border-gray-700 hover:border-discord-primary transition-colors duration-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-lg capitalize">{category.category}</h3>
                 <span className="bg-discord-primary bg-opacity-20 text-discord-primary px-2 py-1 rounded text-xs font-medium">
@@ -55,7 +56,7 @@ export default function CommandCategories() {
                   </span>
                 )}
               </div>
-            </a>
+            </div>
           </Link>
         ))}
       </div>
