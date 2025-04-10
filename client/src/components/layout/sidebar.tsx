@@ -1,7 +1,8 @@
-import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type NavItemProps = {
   href: string;
@@ -13,7 +14,7 @@ type NavItemProps = {
 function NavItem({ href, icon, children, isActive }: NavItemProps) {
   return (
     <Link href={href}>
-      <a
+      <div
         className={`flex items-center px-4 py-2.5 ${
           isActive
             ? "text-white bg-discord-dark rounded-md mx-2 mb-1"
@@ -22,14 +23,40 @@ function NavItem({ href, icon, children, isActive }: NavItemProps) {
       >
         <i className={`${icon} w-5`}></i>
         <span className="ml-3">{children}</span>
-      </a>
+      </div>
     </Link>
   );
 }
 
 export default function Sidebar() {
-  const { user, logoutMutation } = useAuth();
+  const { toast } = useToast();
   const [location] = useLocation();
+  
+  // Fetch the user directly
+  const { data: user } = useQuery({
+    queryKey: ["/api/user"],
+  });
+  
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/logout");
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/user"], null);
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   const { data: botStatus, isLoading: isStatusLoading } = useQuery({
     queryKey: ["/api/bot/status"],
