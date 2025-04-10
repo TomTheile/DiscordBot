@@ -73,13 +73,6 @@ export class MemStorage implements IStorage {
     this.currentLogId = 1;
     this.currentStatId = 1;
     
-    // Create default admin account
-    this.createUser({
-      username: "admin",
-      password: "admin", // This will be hashed in auth.ts
-      isAdmin: true
-    });
-    
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // Prune expired entries every 24h
     });

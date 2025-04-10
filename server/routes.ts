@@ -1,10 +1,121 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 import { discordBot } from "./discord-bot";
 
+// Helper function to determine command category
+function getCommandCategory(commandName: string): string {
+  // Common moderation commands
+  const moderationCommands = [
+    'ban', 'kick', 'mute', 'warn', 'clear', 'lockdown', 'slowmode',
+    'timeout', 'unban', 'unmute', 'purge', 'prune'
+  ];
+  
+  // Common gambling commands
+  const gamblingCommands = [
+    'bet', 'gamble', 'slots', 'roulette', 'dice', 'coinflip', 'jackpot',
+    'daily', 'balance', 'coins', 'money', 'leaderboard'
+  ];
+  
+  // Check which category the command belongs to
+  if (moderationCommands.includes(commandName.toLowerCase())) {
+    return 'moderation';
+  } else if (gamblingCommands.includes(commandName.toLowerCase())) {
+    return 'gambling';
+  } else {
+    return 'utility'; // Default category
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create admin user with hashed password
+  const existingAdmin = await storage.getUserByUsername("admin");
+  if (!existingAdmin) {
+    await storage.createUser({
+      username: "admin",
+      password: await hashPassword("admin"),
+      isAdmin: true
+    });
+    console.log("Admin user created with username: admin, password: admin");
+    
+    // Add some example servers for demo purposes
+    const server1 = await storage.createServer({
+      id: "1234567890123456",
+      name: "Gaming Community",
+      iconUrl: null,
+      memberCount: 1250,
+      prefix: "!"
+    });
+    
+    await storage.createServerSettings({
+      serverId: server1.id,
+      modRoleId: null,
+      adminRoleId: null,
+      autoModEnabled: true,
+      antiSpam: true,
+      linkFilter: true,
+      profanityFilter: true,
+      autoWarn: false,
+      banCommandCooldown: 5,
+      banMessageTemplate: "You have been banned from {server}.",
+      gamblingEnabled: true
+    });
+    
+    const server2 = await storage.createServer({
+      id: "9876543210987654",
+      name: "Study Group",
+      iconUrl: null,
+      memberCount: 350,
+      prefix: "?"
+    });
+    
+    await storage.createServerSettings({
+      serverId: server2.id,
+      modRoleId: null,
+      adminRoleId: null, 
+      autoModEnabled: false,
+      antiSpam: false,
+      linkFilter: false,
+      profanityFilter: false,
+      autoWarn: false,
+      banCommandCooldown: 10,
+      banMessageTemplate: "You've been banned for {reason}.",
+      gamblingEnabled: false
+    });
+    
+    // Add some sample moderation logs
+    await storage.createModerationLog({
+      type: "ban",
+      serverId: server1.id,
+      moderatorId: "123456789",
+      moderatorName: "Moderator1",
+      targetId: "987654321",
+      targetName: "BadUser1",
+      reason: "Spamming in chat channels"
+    });
+    
+    await storage.createModerationLog({
+      type: "kick",
+      serverId: server1.id,
+      moderatorId: "123456789",
+      moderatorName: "Moderator1",
+      targetId: "876543219",
+      targetName: "ProblemUser2",
+      reason: "Inappropriate language"
+    });
+    
+    await storage.createModerationLog({
+      type: "mute",
+      serverId: server2.id,
+      moderatorId: "234567891",
+      moderatorName: "AdminUser",
+      targetId: "765432198",
+      targetName: "TalkativeUser",
+      reason: "Excessive chatting during study hours"
+    });
+  }
+
   // Setup authentication routes
   setupAuth(app);
 
@@ -119,6 +230,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err) {
       console.error(`Error fetching bot status:`, err);
+      res.status(500).send("Internal server error");
+    }
+  });
+  
+  // Execute a bot command remotely
+  app.post("/api/bot/execute-command", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    
+    try {
+      const { serverId, command, args = [] } = req.body;
+      
+      if (!serverId || !command) {
+        return res.status(400).send("Missing serverId or command");
+      }
+      
+      // Get the server to check if it exists
+      const server = await storage.getServer(serverId);
+      if (!server) {
+        return res.status(404).send("Server not found");
+      }
+      
+      // Record the command execution in logs
+      await storage.createModerationLog({
+        type: "command",
+        serverId,
+        moderatorId: req.user?.id.toString() || "unknown",
+        moderatorName: req.user?.username || "Dashboard User",
+        targetId: "n/a",
+        targetName: "n/a",
+        reason: `Executed command: ${command} ${args.join(' ')}`
+      });
+      
+      // Increment command usage stats
+      await storage.incrementCommandUsage(
+        serverId,
+        command,
+        getCommandCategory(command)
+      );
+      
+      res.json({ 
+        success: true, 
+        message: `Command '${command}' executed on server '${server.name}'`,
+        details: {
+          command,
+          args,
+          serverId,
+          timestamp: new Date()
+        }
+      });
+    } catch (err) {
+      console.error(`Error executing bot command:`, err);
       res.status(500).send("Internal server error");
     }
   });
