@@ -31,7 +31,7 @@ export class DiscordBot {
 
     this.commands = new Collection();
     this.prefixes = new Map();
-    this.token = process.env.DISCORD_TOKEN || '';
+    this.token = 'MTM1OTE2MjYwODYwMjg0MTExOA.GaVIvr.weGoRcjUTh_y0xBNu4uc3D70URjN-hc6AeRtT8';
 
     // Register all commands
     this.registerCommands();
