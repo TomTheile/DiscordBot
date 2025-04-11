@@ -6,6 +6,9 @@ import { queryClient } from "./lib/queryClient";
 import { AuthProvider } from "./hooks/use-auth";
 import { Toaster } from "@/components/ui/toaster";
 
+// Setze die Base URL für API Requests
+window.BASE_URL = 'http://localhost:5000';
+
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
